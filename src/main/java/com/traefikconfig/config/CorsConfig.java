@@ -17,14 +17,24 @@ public class CorsConfig {
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         
-        // Allow all origins
+        // Allow all origins with patterns
         config.setAllowedOriginPatterns(Collections.singletonList("*"));
         
         // Allow all headers
-        config.setAllowedHeaders(Arrays.asList("*"));
+        config.setAllowedHeaders(Collections.singletonList("*"));
         
         // Allow all methods
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
+        
+        // Expose headers
+        config.setExposedHeaders(Arrays.asList(
+            "Access-Control-Allow-Origin",
+            "Access-Control-Allow-Methods", 
+            "Access-Control-Allow-Headers",
+            "Access-Control-Max-Age",
+            "Access-Control-Request-Headers",
+            "Access-Control-Request-Method"
+        ));
         
         // Allow credentials
         config.setAllowCredentials(true);
@@ -43,7 +53,13 @@ public class CorsConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(Collections.singletonList("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Collections.singletonList("*"));
+        configuration.setExposedHeaders(Arrays.asList(
+            "Access-Control-Allow-Origin",
+            "Access-Control-Allow-Methods", 
+            "Access-Control-Allow-Headers",
+            "Access-Control-Max-Age"
+        ));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
         
