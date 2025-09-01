@@ -1,0 +1,39 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: traefik-config-manager
+
+# Traefik Configuration Properties
+traefik:
+  config:
+    dokploy-api-key: "DokployAPIfiIorjkXByApJeEEeXIrCkxtMntiEbLFBdBwypmBzSiIhuUuQlALRdTuEBxSYRDt"
+    api-domain: "https://dp.imvj.in"
+    application-id: "mp7_3lbuC06Ok3VXbGF0n"
+    backend-service: "devcrm-crmbackend-service"
+    frontend-service: "devcrm-crmfrontend-service"
+
+# Swagger/OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operationsSorter: method
+    tagsSorter: alpha
+    tryItOutEnabled: true
+    filter: true
+  show-actuator: false
+
+logging:
+  level:
+    com.traefikconfig: INFO
+    com.traefikconfig.service.impl: INFO
+    com.traefikconfig.controller: INFO
+    org.springframework.web: WARN
+    org.springframework.boot: WARN
+    root: WARN
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %highlight(%-5level) %cyan([%15.15t]) %yellow(%-40.40logger{39}) : %msg%n"
