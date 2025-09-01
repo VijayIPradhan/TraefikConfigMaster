@@ -12,6 +12,9 @@ public class TraefikConfigProperties {
     private String applicationId;
     private String backendService;
     private String frontendService;
+    private String singleService;
+    private Integer singleServicePort;
+    private Boolean skipMiddlewares;
 
     // Getters and Setters
     public String getDokployApiKey() {
@@ -60,5 +63,29 @@ public class TraefikConfigProperties {
 
     public void setFrontendService(String frontendService) {
         this.frontendService = frontendService;
+    }
+
+    public String getSingleService() {
+        return singleService;
+    }
+
+    public void setSingleService(String singleService) {
+        this.singleService = singleService;
+    }
+
+    public Integer getSingleServicePort() {
+        return singleServicePort;
+    }
+
+    public void setSingleServicePort(Integer singleServicePort) {
+        this.singleServicePort = singleServicePort;
+    }
+
+    public Boolean getSkipMiddlewares() {
+        return skipMiddlewares;
+    }
+
+    public void setSkipMiddlewares(Boolean skipMiddlewares) {
+        this.skipMiddlewares = skipMiddlewares;
     }
 }

@@ -101,15 +101,38 @@ public class TraefikConfigServiceImpl implements TraefikConfigService {
                 : configProperties.getDokployApiKey();
         String readUrl = apiDomain + "/api/application.readTraefikConfig";
         String updateUrl = apiDomain + "/api/application.updateTraefikConfig";
-        String backendService = request.getBackendService() != null ? request.getBackendService()
-                : configProperties.getBackendService();
-        String frontendService = request.getFrontendService() != null ? request.getFrontendService()
-                : configProperties.getFrontendService();
+        // Handle single service configuration
+        String backendService, frontendService;
+        Integer servicePort = null;
+        if (request.getServiceName() != null) {
+            // Single service mode from request
+            backendService = request.getServiceName();
+            frontendService = request.getServiceName();
+            servicePort = request.getServicePort() != null ? request.getServicePort() : 8080;
+            logger.info("🔧 Using single service mode with service: {} on port: {}", request.getServiceName(), servicePort);
+        } else if (configProperties.getSingleService() != null) {
+            // Single service mode from properties
+            backendService = configProperties.getSingleService();
+            frontendService = configProperties.getSingleService();
+            servicePort = configProperties.getSingleServicePort() != null ? configProperties.getSingleServicePort() : 8080;
+            logger.info("🔧 Using single service mode from config with service: {} on port: {}", configProperties.getSingleService(), servicePort);
+        } else {
+            // Traditional dual service mode
+            backendService = request.getBackendService() != null ? request.getBackendService()
+                    : configProperties.getBackendService();
+            frontendService = request.getFrontendService() != null ? request.getFrontendService()
+                    : configProperties.getFrontendService();
+            logger.info("🔧 Using dual service mode - Backend: {}, Frontend: {}", backendService, frontendService);
+        }
+
+        // Check if we should skip middlewares
+        boolean skipMiddlewares = (request.getSkipMiddlewares() != null && request.getSkipMiddlewares()) ||
+                                 (configProperties.getSkipMiddlewares() != null && configProperties.getSkipMiddlewares());
 
         String currentConfig = fetchCurrentTraefikConfigWithCustom(appId, readUrl, apiKey);
         logger.info("📄 Current config before adding host (custom):\n{}", currentConfig.replace("\\n", "\n"));
-        String newRoutersBlock = generateNewRoutersBlockWithCustom(host, backendService, frontendService);
-        String updatedConfig = mergeTraefikConfig(currentConfig, host, newRoutersBlock);
+        String newRoutersBlock = generateNewRoutersBlockWithCustom(host, backendService, frontendService, servicePort, skipMiddlewares);
+        String updatedConfig = mergeTraefikConfigWithServices(currentConfig, host, newRoutersBlock, backendService, frontendService, servicePort);
 
         if (updatedConfig == null) {
             logger.warn("⚠️ Host '{}' already exists [custom_config]", host);
@@ -239,6 +262,44 @@ public class TraefikConfigServiceImpl implements TraefikConfigService {
     }
 
     /**
+     * Merge routers and services into http configuration.
+     */
+    private String mergeTraefikConfigWithServices(String currentConfig, String hostToAdd, String newRoutersBlock, 
+                                                 String backendService, String frontendService, Integer servicePort) {
+        logger.debug("🔍 Checking if host '{}' already exists in configuration", hostToAdd);
+        if (currentConfig.contains("Host(`" + hostToAdd + "`)")) {
+            logger.warn("⚠️ Host '{}' already exists in configuration", hostToAdd);
+            return null; // Host already exists
+        }
+
+        // Check if we're in single service mode
+        boolean isSingleService = backendService != null && frontendService != null && 
+                                 backendService.equals(frontendService) && servicePort != null;
+
+        String configWithRouters = mergeTraefikConfig(currentConfig, hostToAdd, newRoutersBlock);
+        
+        if (isSingleService) {
+            // Add service definition for single service mode
+            String subdomainPrefix = hostToAdd.split("\\.")[0];
+            String serviceNameForConfig = String.format("%s-service", subdomainPrefix);
+            int port = servicePort != null ? servicePort : 8080;
+            
+            String serviceBlock = String.format("""
+                    %s:
+                      loadBalancer:
+                        servers:
+                        - url: http://%s:%d
+                        passHostHeader: true
+
+                    """, serviceNameForConfig, backendService, port);
+            
+            configWithRouters = mergeServiceConfig(configWithRouters, serviceBlock);
+        }
+        
+        return configWithRouters;
+    }
+
+    /**
      * Merge routers into http.routers section.
      */
     private String mergeTraefikConfig(String currentConfig, String hostToAdd, String newRoutersBlock) {
@@ -256,25 +317,117 @@ public class TraefikConfigServiceImpl implements TraefikConfigService {
         }
         logger.debug("✅ Found 'routers:' section at index: {}", routersIndex);
 
-        logger.debug("🔍 Looking for 'middlewares:' section after routers");
-        int middlewaresIndex = currentConfig.indexOf("\n  middlewares:", routersIndex);
-        if (middlewaresIndex == -1) {
-            logger.error("❌ Invalid config: 'middlewares:' section not found");
-            throw new IllegalArgumentException("Invalid config: 'middlewares:' section not found.");
-        }
-        logger.debug("✅ Found 'middlewares:' section at index: {}", middlewaresIndex);
-
+        // Find the next section after routers (could be middlewares, services, or other sections)
+        int nextSectionIndex = findNextSectionAfterRouters(currentConfig, routersIndex);
+        
         logger.debug("🔧 Indenting new router blocks");
         String indentedRouters = newRoutersBlock.lines()
                 .map(line -> "    " + line)
                 .collect(Collectors.joining("\n"));
 
-        String beforeInsert = currentConfig.substring(0, middlewaresIndex);
-        String afterInsert = currentConfig.substring(middlewaresIndex);
+        String beforeInsert = currentConfig.substring(0, nextSectionIndex);
+        String afterInsert = currentConfig.substring(nextSectionIndex);
 
         String mergedConfig = beforeInsert.stripTrailing() + "\n" + indentedRouters + "\n" + afterInsert;
         logger.debug("✅ Configuration merged successfully (new length: {} characters)", mergedConfig.length());
 
+        return mergedConfig;
+    }
+
+    /**
+     * Find the next section after routers (middlewares, services, etc.)
+     */
+    private int findNextSectionAfterRouters(String currentConfig, int routersIndex) {
+        String[] possibleSections = {"\n  middlewares:", "\n  services:", "\nentryPoints:", "\ncertificatesResolvers:", "\napi:", "\nlog:"};
+        
+        for (String section : possibleSections) {
+            int sectionIndex = currentConfig.indexOf(section, routersIndex);
+            if (sectionIndex != -1) {
+                logger.debug("✅ Found next section '{}' at index: {}", section.trim(), sectionIndex);
+                return sectionIndex;
+            }
+        }
+        
+        // If no section found, insert at the end of the file
+        logger.debug("⚠️ No next section found after routers, inserting at end of file");
+        return currentConfig.length();
+    }
+
+    /**
+     * Merge service definition into http.services section.
+     */
+    private String mergeServiceConfig(String currentConfig, String newServiceBlock) {
+        logger.debug("🔍 Looking for 'services:' section in configuration");
+        int servicesIndex = currentConfig.indexOf("\n  services:");
+        
+        if (servicesIndex == -1) {
+            // Services section doesn't exist, create it
+            logger.debug("⚠️ Services section not found, creating new services section");
+            return createServicesSection(currentConfig, newServiceBlock);
+        }
+        
+        logger.debug("✅ Found 'services:' section at index: {}", servicesIndex);
+
+        // Find the end of services section (next top-level section or end of file)
+        int nextSectionIndex = currentConfig.length();
+        String[] possibleSections = {"\nentryPoints:", "\ncertificatesResolvers:", "\napi:", "\nlog:"};
+        for (String section : possibleSections) {
+            int sectionIndex = currentConfig.indexOf(section, servicesIndex);
+            if (sectionIndex != -1 && sectionIndex < nextSectionIndex) {
+                nextSectionIndex = sectionIndex;
+            }
+        }
+
+        logger.debug("🔧 Indenting new service block");
+        String indentedService = newServiceBlock.lines()
+                .map(line -> "    " + line)
+                .collect(Collectors.joining("\n"));
+
+        String beforeInsert = currentConfig.substring(0, nextSectionIndex);
+        String afterInsert = currentConfig.substring(nextSectionIndex);
+
+        String mergedConfig = beforeInsert.stripTrailing() + "\n" + indentedService + "\n" + afterInsert;
+        logger.debug("✅ Service configuration merged successfully (new length: {} characters)", mergedConfig.length());
+
+        return mergedConfig;
+    }
+
+    /**
+     * Create a new services section in the configuration.
+     */
+    private String createServicesSection(String currentConfig, String newServiceBlock) {
+        logger.debug("🔧 Creating new services section");
+        
+        // Find where to insert the services section (after routers, before other sections)
+        int httpIndex = currentConfig.indexOf("http:");
+        if (httpIndex == -1) {
+            throw new IllegalArgumentException("Invalid config: 'http:' section not found.");
+        }
+        
+        // Find the end of the http section or a good place to insert services
+        String[] possibleSections = {"\nentryPoints:", "\ncertificatesResolvers:", "\napi:", "\nlog:"};
+        int insertIndex = currentConfig.length();
+        
+        for (String section : possibleSections) {
+            int sectionIndex = currentConfig.indexOf(section, httpIndex);
+            if (sectionIndex != -1 && sectionIndex < insertIndex) {
+                insertIndex = sectionIndex;
+            }
+        }
+        
+        logger.debug("🔧 Indenting new service block for new services section");
+        String indentedService = newServiceBlock.lines()
+                .map(line -> "    " + line)
+                .collect(Collectors.joining("\n"));
+        
+        String servicesSection = "\n  services:\n" + indentedService + "\n";
+        
+        String beforeInsert = currentConfig.substring(0, insertIndex);
+        String afterInsert = currentConfig.substring(insertIndex);
+        
+        String mergedConfig = beforeInsert.stripTrailing() + servicesSection + afterInsert;
+        logger.debug("✅ New services section created successfully (new length: {} characters)", mergedConfig.length());
+        
         return mergedConfig;
     }
 
@@ -298,7 +451,9 @@ public class TraefikConfigServiceImpl implements TraefikConfigService {
             if (line.contains("Host(`" + host + "`)") ||
                     line.contains("# Backend API routes for " + host) ||
                     line.contains("# Frontend routes for " + host) ||
-                    line.trim().startsWith(subdomainPrefix + "-devcrm-")) {
+                    line.contains("# Routes for " + host) ||
+                    line.trim().startsWith(subdomainPrefix + "-devcrm-") ||
+                    line.trim().startsWith(subdomainPrefix + "-router")) {
 
                 logger.debug("🎯 Found line to delete: {}", line.trim());
                 skip = true;
@@ -415,57 +570,142 @@ public class TraefikConfigServiceImpl implements TraefikConfigService {
     /**
      * Generates new router YAML blocks for a hostname with custom services.
      */
-    private String generateNewRoutersBlockWithCustom(String host, String backendService, String frontendService) {
+    private String generateNewRoutersBlockWithCustom(String host, String backendService, String frontendService, Integer servicePort, boolean skipMiddlewares) {
         logger.debug("🔧 Generating router blocks for host: {} with custom services", host);
         String subdomainPrefix = host.split("\\.")[0];
         logger.debug("📝 Extracted subdomain prefix: {}", subdomainPrefix);
 
-        String routerNameBackend = String.format("%s-devcrm-crmbackend-router", subdomainPrefix);
-        String routerNameFrontend = String.format("%s-devcrm-crmfrontend-router", subdomainPrefix);
+        // Check if we have both services or just one
+        boolean hasBothServices = backendService != null && frontendService != null && 
+                                 !backendService.equals(frontendService);
+        
+        if (hasBothServices) {
+            // Original logic for separate backend and frontend services
+            String routerNameBackend = String.format("%s-devcrm-crmbackend-router", subdomainPrefix);
+            String routerNameFrontend = String.format("%s-devcrm-crmfrontend-router", subdomainPrefix);
 
-        logger.debug("🔗 Generated router names - Backend: {}, Frontend: {}", routerNameBackend, routerNameFrontend);
-        logger.debug("🔧 Using custom services - Backend: {}, Frontend: {}", backendService, frontendService);
+            logger.debug("🔗 Generated router names - Backend: {}, Frontend: {}", routerNameBackend, routerNameFrontend);
+            logger.debug("🔧 Using custom services - Backend: {}, Frontend: {}", backendService, frontendService);
 
-        String routerBlock = String.format("""
-                # Backend API routes for %s
-                %s:
-                  rule: Host(`%s`) && PathPrefix(`/api`)
-                  service: %s
-                  middlewares:
-                    - redirect-to-https
+            String routerBlock;
+            if (skipMiddlewares) {
+                // Generate routers without middlewares
+                routerBlock = String.format("""
+                        # Backend API routes for %s
+                        %s:
+                          rule: Host(`%s`) && PathPrefix(`/api`)
+                          service: %s
+                          entryPoints:
+                            - web
 
-                %s-websecure:
-                  rule: Host(`%s`) && PathPrefix(`/api`)
-                  service: %s
-                  middlewares: []
-                  tls:
-                    certResolver: letsencrypt
+                        %s-websecure:
+                          rule: Host(`%s`) && PathPrefix(`/api`)
+                          service: %s
+                          entryPoints:
+                            - websecure
+                          tls:
+                            certResolver: letsencrypt
 
-                # Frontend routes for %s
-                %s:
-                  rule: Host(`%s`) && !PathPrefix(`/api`)
-                  service: %s
-                  middlewares:
-                    - redirect-to-https
+                        # Frontend routes for %s
+                        %s:
+                          rule: Host(`%s`) && !PathPrefix(`/api`)
+                          service: %s
+                          entryPoints:
+                            - web
 
-                %s-websecure:
-                  rule: Host(`%s`) && !PathPrefix(`/api`)
-                  service: %s
-                  middlewares: []
-                  tls:
-                    certResolver: letsencrypt
+                        %s-websecure:
+                          rule: Host(`%s`) && !PathPrefix(`/api`)
+                          service: %s
+                          entryPoints:
+                            - websecure
+                          tls:
+                            certResolver: letsencrypt
 
-                """,
-                host,
-                routerNameBackend, host, backendService,
-                routerNameBackend, host, backendService,
-                host,
-                routerNameFrontend, host, frontendService,
-                routerNameFrontend, host, frontendService);
+                        """,
+                        host,
+                        routerNameBackend, host, backendService,
+                        routerNameBackend, host, backendService,
+                        host,
+                        routerNameFrontend, host, frontendService,
+                        routerNameFrontend, host, frontendService);
+            } else {
+                // Generate routers with middlewares (original logic)
+                routerBlock = String.format("""
+                        # Backend API routes for %s
+                        %s:
+                          rule: Host(`%s`) && PathPrefix(`/api`)
+                          service: %s
+                          middlewares:
+                            - redirect-to-https
 
-        logger.debug("✅ Router block generated successfully with custom services (length: {} characters)",
-                routerBlock.length());
-        return routerBlock;
+                        %s-websecure:
+                          rule: Host(`%s`) && PathPrefix(`/api`)
+                          service: %s
+                          middlewares: []
+                          tls:
+                            certResolver: letsencrypt
+
+                        # Frontend routes for %s
+                        %s:
+                          rule: Host(`%s`) && !PathPrefix(`/api`)
+                          service: %s
+                          middlewares:
+                            - redirect-to-https
+
+                        %s-websecure:
+                          rule: Host(`%s`) && !PathPrefix(`/api`)
+                          service: %s
+                          middlewares: []
+                          tls:
+                            certResolver: letsencrypt
+
+                        """,
+                        host,
+                        routerNameBackend, host, backendService,
+                        routerNameBackend, host, backendService,
+                        host,
+                        routerNameFrontend, host, frontendService,
+                        routerNameFrontend, host, frontendService);
+            }
+
+            logger.debug("✅ Router block generated successfully with custom services (length: {} characters)",
+                    routerBlock.length());
+            return routerBlock;
+        } else {
+            // Single service configuration - generate only 2 routers (HTTP and HTTPS) + service definition
+            String serviceName = backendService != null ? backendService : frontendService;
+            String routerName = String.format("%s-router", subdomainPrefix);
+            String serviceNameForConfig = String.format("%s-service", subdomainPrefix);
+            int port = servicePort != null ? servicePort : 8080;
+            
+            logger.debug("🔗 Generated single router name: {}", routerName);
+            logger.debug("🔧 Using single service: {} on port: {}", serviceName, port);
+
+            String routerBlock = String.format("""
+                    # Routes for %s
+                    %s:
+                      rule: Host(`%s`)
+                      service: %s
+                      entryPoints:
+                        - web
+
+                    %s-websecure:
+                      rule: Host(`%s`)
+                      service: %s
+                      entryPoints:
+                        - websecure
+                      tls:
+                        certResolver: letsencrypt
+
+                    """,
+                    host,
+                    routerName, host, serviceNameForConfig,
+                    routerName, host, serviceNameForConfig);
+
+            logger.debug("✅ Single service router block generated successfully (length: {} characters)",
+                    routerBlock.length());
+            return routerBlock;
+        }
     }
 
     /**

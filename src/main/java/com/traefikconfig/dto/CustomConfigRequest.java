@@ -24,6 +24,15 @@ public class CustomConfigRequest {
     
     @Schema(description = "Custom Frontend service name (optional, uses default if not provided)")
     private String frontendService;
+    
+    @Schema(description = "Single service name for simple configurations (when you only have one service for both HTTP and HTTPS)")
+    private String serviceName;
+    
+    @Schema(description = "Port for the single service (optional, defaults to 8080)", example = "8080")
+    private Integer servicePort;
+    
+    @Schema(description = "Skip middlewares in configuration (for simple setups without middleware section)", example = "true")
+    private Boolean skipMiddlewares;
 
     // Getters and Setters
     public String getHostname() {
@@ -72,5 +81,29 @@ public class CustomConfigRequest {
 
     public void setFrontendService(String frontendService) {
         this.frontendService = frontendService;
+    }
+
+    public String getServiceName() {
+        return serviceName;
+    }
+
+    public void setServiceName(String serviceName) {
+        this.serviceName = serviceName;
+    }
+
+    public Integer getServicePort() {
+        return servicePort;
+    }
+
+    public void setServicePort(Integer servicePort) {
+        this.servicePort = servicePort;
+    }
+
+    public Boolean getSkipMiddlewares() {
+        return skipMiddlewares;
+    }
+
+    public void setSkipMiddlewares(Boolean skipMiddlewares) {
+        this.skipMiddlewares = skipMiddlewares;
     }
 }

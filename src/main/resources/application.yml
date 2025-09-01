@@ -13,6 +13,10 @@ traefik:
     application-id: "mp7_3lbuC06Ok3VXbGF0n"
     backend-service: "devcrm-crmbackend-service"
     frontend-service: "devcrm-crmfrontend-service"
+    # For single service configurations, you can use:
+    # single-service: "your-single-service-name"
+    # single-service-port: 8080
+    # skip-middlewares: true
 
 # Swagger/OpenAPI Configuration
 springdoc:
