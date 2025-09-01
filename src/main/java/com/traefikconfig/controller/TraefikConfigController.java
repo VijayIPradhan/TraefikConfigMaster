@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/traefik")
+@CrossOrigin(origins = "*", maxAge = 3600)
 @Tag(name = "Traefik Configuration", description = "API for managing Traefik configurations via Dokploy")
 public class TraefikConfigController {
 
