@@ -17,6 +17,7 @@ public class CorsConfig {
                         .allowedOrigins("*") // allow all origins
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH") // allow all methods
                         .allowedHeaders("*") // allow all headers
+                        .exposedHeaders("*") // expose all headers to the browser
                         .maxAge(3600); // cache preflight for 1 hour
             }
         };
