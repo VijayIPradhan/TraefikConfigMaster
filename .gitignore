@@ -29,3 +29,5 @@ target
 .DS_Store
 .idea
 *.iml
+# Ignore macOS resource fork files
+._*
