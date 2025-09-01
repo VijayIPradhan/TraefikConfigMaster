@@ -24,6 +24,7 @@ springdoc:
     operationsSorter: method
     tagsSorter: alpha
     tryItOutEnabled: true
+    disable-swagger-default-url: true
     filter: true
   show-actuator: false
 

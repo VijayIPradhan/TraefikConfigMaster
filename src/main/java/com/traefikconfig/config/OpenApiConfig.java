@@ -25,14 +25,6 @@ public class OpenApiConfig {
                                 .email("support@example.com"))
                         .license(new License()
                                 .name("MIT License")
-                                .url("https://opensource.org/licenses/MIT")))
-                .servers(List.of(
-                        new Server()
-                                .url("http://localhost:8080")
-                                .description("Development server"),
-                        new Server()
-                                .url("https://api.example.com")
-                                .description("Production server")
-                ));
+                                .url("https://opensource.org/licenses/MIT")));
     }
 }
