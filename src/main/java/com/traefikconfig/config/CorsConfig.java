@@ -14,11 +14,16 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**") // allow all paths
-                        .allowedOrigins("*") // allow all origins
+                        .allowedOriginPatterns(
+                            "https://trcon.devcrm.seabed2crest.com",
+                            "http://*",
+                            "https://*"
+                        ) // use patterns instead of exact origins
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH") // allow all methods
                         .allowedHeaders("*") // allow all headers
-                        .exposedHeaders("*") // expose all headers to the browser
-                        .maxAge(3600); // cache preflight for 1 hour
+                        .exposedHeaders("*") // expose all headers
+                        .allowCredentials(true) // needed for cookies or Authorization headers
+                        .maxAge(3600); // preflight cache duration
             }
         };
     }
