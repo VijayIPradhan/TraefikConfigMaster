@@ -1,5 +1,11 @@
 server:
   port: 8080
+  # Add HTTPS support configuration
+  ssl:
+    enabled: false  # Set to true if you want to enable HTTPS directly in Spring Boot
+  # Add CORS configuration at server level
+  servlet:
+    context-path: /
 
 spring:
   application:
