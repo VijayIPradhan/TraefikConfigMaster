@@ -13,17 +13,13 @@ public class CorsConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**") // allow all paths
-                        .allowedOriginPatterns(
-                            "https://trcon.devcrm.seabed2crest.com",
-                            "http://*",
-                            "https://*"
-                        ) // use patterns instead of exact origins
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH") // allow all methods
-                        .allowedHeaders("*") // allow all headers
-                        .exposedHeaders("*") // expose all headers
-                        .allowCredentials(true) // needed for cookies or Authorization headers
-                        .maxAge(3600); // preflight cache duration
+                registry.addMapping("/**")
+                        .allowedOrigins("https://trcon.devcrm.seabed2crest.com")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH")
+                        .allowedHeaders("*")
+                        .exposedHeaders("*")
+                        .allowCredentials(true)
+                        .maxAge(3600);
             }
         };
     }
