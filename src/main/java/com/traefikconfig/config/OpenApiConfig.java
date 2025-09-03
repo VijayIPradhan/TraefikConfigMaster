@@ -16,19 +16,28 @@ public class OpenApiConfig {
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
+                // Static server list (optional)
                 .servers(List.of(
-                        new Server().url("http://trcon.devcrm.seabed2crest.com").description("Production Server"),
-                        new Server().url("http://localhost:8080").description("Local Development Server")
+                        new Server()
+                                .url("https://trcon.devcrm.seabed2crest.com")
+                                .description("Production Server"),
+                        new Server()
+                                .url("http://localhost:8080")
+                                .description("Local Development Server")
                 ))
+
+                // API metadata
                 .info(new Info()
                         .title("Traefik Config Manager API")
                         .version("1.0.0")
-                        .description("REST API for managing Traefik configurations via Dokploy")
+                        .description("REST API for managing Traefik configurations via Dokploy.")
                         .contact(new Contact()
-                                .name("Traefik Config Manager")
-                                .email("support@example.com"))
+                                .name("Traefik Config Manager Support")
+                                .email("support@example.com")
+                                .url("https://trcon.devcrm.seabed2crest.com"))
                         .license(new License()
                                 .name("MIT License")
-                                .url("https://opensource.org/licenses/MIT")));
+                                .url("https://opensource.org/licenses/MIT"))
+                );
     }
 }
