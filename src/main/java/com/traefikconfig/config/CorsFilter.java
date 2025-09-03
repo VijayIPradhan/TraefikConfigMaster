@@ -23,8 +23,13 @@ public class CorsFilter implements Filter {
         
         // Set CORS headers for all requests
         if (origin != null) {
-            // If origin is provided, echo it back (for HTTPS compatibility)
-            response.setHeader("Access-Control-Allow-Origin", origin);
+            // Check if origin matches our allowed patterns
+            if (isAllowedOrigin(origin)) {
+                response.setHeader("Access-Control-Allow-Origin", origin);
+            } else {
+                // Fallback to wildcard for requests without origin header
+                response.setHeader("Access-Control-Allow-Origin", "*");
+            }
         } else {
             // Fallback to wildcard for requests without origin header
             response.setHeader("Access-Control-Allow-Origin", "*");
@@ -48,6 +53,15 @@ public class CorsFilter implements Filter {
         }
 
         chain.doFilter(req, res);
+    }
+
+    private boolean isAllowedOrigin(String origin) {
+        // Check if origin matches our allowed patterns
+        return origin.matches("https?://.*\\.traefik\\.me") ||
+               origin.matches("https?://.*\\.seabed2crest\\.com") ||
+               origin.matches("https?://localhost:\\d+") ||
+               origin.matches("https?://127\\.0\\.0\\.1:\\d+") ||
+               origin.matches("https?://.*"); // Allow all other origins
     }
 
     @Override

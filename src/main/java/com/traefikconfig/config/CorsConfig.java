@@ -26,7 +26,11 @@ public class CorsConfig {
                             "http://localhost:*", 
                             "https://localhost:*",
                             "http://127.0.0.1:*",
-                            "https://127.0.0.1:*"
+                            "https://127.0.0.1:*",
+                            "http://*.traefik.me",
+                            "https://*.traefik.me",
+                            "http://*.seabed2crest.com",
+                            "https://*.seabed2crest.com"
                         )
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH")
                         .allowedHeaders("*")
@@ -50,7 +54,11 @@ public class CorsConfig {
             "http://localhost:*", 
             "https://localhost:*",
             "http://127.0.0.1:*",
-            "https://127.0.0.1:*"
+            "https://127.0.0.1:*",
+            "http://*.traefik.me",
+            "https://*.traefik.me",
+            "http://*.seabed2crest.com",
+            "https://*.seabed2crest.com"
         ));
         
         // Allow all methods
