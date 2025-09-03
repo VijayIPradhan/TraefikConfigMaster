@@ -25,23 +25,24 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(@NonNull CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOriginPatterns(
-                            // Local development
-                            "http://localhost:*",
-                            "https://localhost:*",
-                            "http://127.0.0.1:*",
-                            "https://127.0.0.1:*",
+                        // .allowedOriginPatterns(
+                        //     // Local development
+                        //     "http://localhost:*",
+                        //     "https://localhost:*",
+                        //     "http://127.0.0.1:*",
+                        //     "https://127.0.0.1:*",
                             
-                            // Traefik domains (your specific use case)
-                            "http://*.traefik.me",
-                            "https://*.traefik.me",
-                            "http://*.seabed2crest.com",
-                            "https://*.seabed2crest.com",
+                        //     // Traefik domains (your specific use case)
+                        //     "http://*.traefik.me",
+                        //     "https://*.traefik.me",
+                        //     "http://*.seabed2crest.com",
+                        //     "https://*.seabed2crest.com",
                             
-                            // Generic patterns for flexibility
-                            "http://*",
-                            "https://*"
-                        )
+                        //     // Generic patterns for flexibility
+                        //     "http://*",
+                        //     "https://*"
+                        // )
+                        .allowedOriginPatterns("*")
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH")
                         .allowedHeaders("*")
                         .exposedHeaders(

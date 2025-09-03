@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traefik Config Manager - Complete API Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; color: #333; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; margin-bottom: 30px; color: white; }
+        .header h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .tabs { display: flex; background: white; border-radius: 12px 12px 0 0; overflow: hidden; margin-bottom: 0; }
+        .tab { flex: 1; padding: 16px; background: #f8fafc; border: none; cursor: pointer; font-weight: 500; }
+        .tab.active { background: white; color: #667eea; border-bottom: 3px solid #667eea; }
+        .tab.danger { background: #fef2f2; color: #dc2626; }
+        .tab.danger.active { background: white; color: #dc2626; border-bottom: 3px solid #dc2626; }
+        .tab-content { background: white; border-radius: 0 0 12px 12px; padding: 30px; }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+        .api-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; }
+        .api-card { background: #f9fafb; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; }
+        .api-card.danger { background: #fef2f2; border: 2px solid #fecaca; }
+        .api-card.danger h3 { color: #dc2626; }
+        .api-card h3 { color: #667eea; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .method { padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; }
+        .method.get { background: #10b981; color: white; }
+        .method.post { background: #3b82f6; color: white; }
+        .method.put { background: #f59e0b; color: white; }
+        .method.delete { background: #ef4444; color: white; }
+        .endpoint { font-family: monospace; background: #f1f5f9; padding: 8px 12px; border-radius: 6px; margin: 12px 0; }
+        .description { color: #64748b; margin-bottom: 16px; }
+        .warning { background: #fef3c7; border: 2px solid #fbbf24; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .warning h4 { color: #d97706; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .input-group { margin-bottom: 16px; }
+        .input-group label { display: block; margin-bottom: 6px; font-weight: 500; }
+        .input-group input, .input-group textarea { width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; }
+        .btn { background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; width: 100%; }
+        .btn:hover { background: #5a67d8; }
+        .btn.danger { background: #dc2626; }
+        .btn.danger:hover { background: #b91c1c; }
+        .response { margin-top: 16px; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 0.85rem; max-height: 200px; overflow-y: auto; }
+        .response.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+        .response.error { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
+        .loading { display: none; text-align: center; color: #667eea; margin-top: 8px; }
+        .status { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-left: 8px; }
+        .status.success { background: #dcfce7; color: #166534; }
+        .status.error { background: #fee2e2; color: #dc2626; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Traefik Config Manager</h1>
+            <p>Complete API Dashboard - All Endpoints Included</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('core')">Core APIs</button>
+            <button class="tab" onclick="showTab('traefik')">Traefik Management</button>
+            <button class="tab" onclick="showTab('advanced')">Advanced Features</button>
+            <button class="tab danger" onclick="showTab('dangerous')">⚠️ Dangerous Operations</button>
+        </div>
+
+        <div class="tab-content">
+            <!-- Core APIs Tab -->
+            <div class="tab-pane active" id="core">
+                <div class="api-grid">
+                    <div class="api-card">
+                        <h3><span class="method get">GET</span> Health Check</h3>
+                        <div class="endpoint">/api/health</div>
+                        <div class="description">Check application health status</div>
+                        <button class="btn" onclick="callAPI('GET', '/api/health')">Test Health</button>
+                        <div class="loading" id="loading-health">Checking...</div>
+                        <div class="response" id="response-health" style="display: none;"></div>
+                    </div>
+
+                    <div class="api-card">
+                        <h3><span class="method get">GET</span> Current Configuration</h3>
+                        <div class="endpoint">/api/config/current</div>
+                        <div class="description">Get current configuration properties</div>
+                        <button class="btn" onclick="callAPI('GET', '/api/config/current')">Get Config</button>
+                        <div class="loading" id="loading-config">Loading...</div>
+                        <div class="response" id="response-config" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Traefik Management Tab -->
+            <div class="tab-pane" id="traefik">
+                <div class="api-grid">
+                    <div class="api-card">
+                        <h3><span class="method get">GET</span> Traefik Configuration</h3>
+                        <div class="endpoint">/api/traefik/config</div>
+                        <div class="description">Get Traefik config from Dokploy</div>
+                        <button class="btn" onclick="callAPI('GET', '/api/traefik/config')">Get Traefik Config</button>
+                        <div class="loading" id="loading-traefik-config">Loading...</div>
+                        <div class="response" id="response-traefik-config" style="display: none;"></div>
+                    </div>
+
+                    <div class="api-card">
+                        <h3><span class="method post">POST</span> Add Host</h3>
+                        <div class="endpoint">/api/traefik/add-host</div>
+                        <div class="description">Add new hostname to Traefik</div>
+                        <div class="input-group">
+                            <label>Hostname:</label>
+                            <input type="text" id="hostname" placeholder="example.com" value="test.example.com">
+                        </div>
+                        <button class="btn" onclick="addHost()">Add Host</button>
+                        <div class="loading" id="loading-add-host">Adding...</div>
+                        <div class="response" id="response-add-host" style="display: none;"></div>
+                    </div>
+
+                    <div class="api-card">
+                        <h3><span class="method delete">DELETE</span> Delete Host</h3>
+                        <div class="endpoint">/api/traefik/delete-host</div>
+                        <div class="description">Remove host from Traefik</div>
+                        <div class="input-group">
+                            <label>Hostname:</label>
+                            <input type="text" id="delete-hostname" placeholder="example.com" value="test.example.com">
+                        </div>
+                        <button class="btn" onclick="deleteHost()">Delete Host</button>
+                        <div class="loading" id="loading-delete-host">Deleting...</div>
+                        <div class="response" id="response-delete-host" style="display: none;"></div>
+                    </div>
+
+                    <div class="api-card">
+                        <h3><span class="method get">GET</span> Service URLs</h3>
+                        <div class="endpoint">/api/traefik/services</div>
+                        <div class="description">Extract service URLs from config</div>
+                        <button class="btn" onclick="callAPI('GET', '/api/traefik/services')">Get Services</button>
+                        <div class="loading" id="loading-services">Loading...</div>
+                        <div class="response" id="response-services" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Features Tab -->
+            <div class="tab-pane" id="advanced">
+                <div class="api-grid">
+                    <div class="api-card">
+                        <h3><span class="method post">POST</span> Add Host (Custom)</h3>
+                        <div class="endpoint">/api/traefik/add-host-custom</div>
+                        <div class="description">Add host with custom configuration - All fields are optional except hostname</div>
+                        
+                        <div class="input-group">
+                            <label>Hostname: <span style="color: #dc2626;">*</span></label>
+                            <input type="text" id="custom-hostname" placeholder="example.com" value="custom.example.com" required>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Dokploy API Key:</label>
+                            <input type="text" id="custom-api-key" placeholder="Leave empty to use default">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>API Domain:</label>
+                            <input type="text" id="custom-api-domain" placeholder="https://custom.imvj.in">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Application ID:</label>
+                            <input type="text" id="custom-app-id" placeholder="Leave empty to use default">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Backend Service:</label>
+                            <input type="text" id="custom-backend" placeholder="Leave empty to use default">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Frontend Service:</label>
+                            <input type="text" id="custom-frontend" placeholder="Leave empty to use default">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Single Service Name:</label>
+                            <input type="text" id="custom-service-name" placeholder="For simple HTTP/HTTPS configs">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Service Port:</label>
+                            <input type="number" id="custom-service-port" placeholder="8080" min="1" max="65535">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Skip Middlewares:</label>
+                            <select id="custom-skip-middlewares">
+                                <option value="">Use default</option>
+                                <option value="true">Yes (skip middlewares)</option>
+                                <option value="false">No (include middlewares)</option>
+                            </select>
+                        </div>
+                        
+                        <button class="btn" onclick="addHostCustom()">Add Custom Host</button>
+                        <div class="loading" id="loading-add-host-custom">Adding...</div>
+                        <div class="response" id="response-add-host-custom" style="display: none;"></div>
+                    </div>
+
+                    <div class="api-card">
+                        <h3><span class="method delete">DELETE</span> Delete Host (Custom)</h3>
+                        <div class="endpoint">/api/traefik/delete-host-custom</div>
+                        <div class="description">Delete host with custom configuration - All fields are optional except hostname</div>
+                        
+                        <div class="input-group">
+                            <label>Hostname: <span style="color: #dc2626;">*</span></label>
+                            <input type="text" id="custom-delete-hostname" placeholder="example.com" value="custom.example.com" required>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Dokploy API Key:</label>
+                            <input type="text" id="custom-delete-api-key" placeholder="Leave empty to use default">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>API Domain:</label>
+                            <input type="text" id="custom-delete-api-domain" placeholder="https://custom.imvj.in">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Application ID:</label>
+                            <input type="text" id="custom-delete-app-id" placeholder="Leave empty to use default">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Backend Service:</label>
+                            <input type="text" id="custom-delete-backend" placeholder="Leave empty to use default">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Frontend Service:</label>
+                            <input type="text" id="custom-delete-frontend" placeholder="Leave empty to use default">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Single Service Name:</label>
+                            <input type="text" id="custom-delete-service-name" placeholder="For simple HTTP/HTTPS configs">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Service Port:</label>
+                            <input type="number" id="custom-delete-service-port" placeholder="8080" min="1" max="65535">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Skip Middlewares:</label>
+                            <select id="custom-delete-skip-middlewares">
+                                <option value="">Use default</option>
+                                <option value="true">Yes (skip middlewares)</option>
+                                <option value="false">No (include middlewares)</option>
+                            </select>
+                        </div>
+                        
+                        <button class="btn" onclick="deleteHostCustom()">Delete Custom Host</button>
+                        <div class="loading" id="loading-delete-host-custom">Deleting...</div>
+                        <div class="response" id="response-delete-host-custom" style="display: none;"></div>
+                    </div>
+
+                    <div class="api-card">
+                        <h3><span class="method post">POST</span> Custom Configuration</h3>
+                        <div class="endpoint">/api/traefik/config-custom</div>
+                        <div class="description">Get config with custom settings</div>
+                        <div class="input-group">
+                            <label>Custom Config (JSON):</label>
+                            <textarea id="custom-config-json" rows="3" placeholder='{"dokployApiKey": "custom-key", "apiDomain": "https://custom.domain.com"}'></textarea>
+                        </div>
+                        <button class="btn" onclick="getCustomConfig()">Get Custom Config</button>
+                        <div class="loading" id="loading-config-custom">Loading...</div>
+                        <div class="response" id="response-config-custom" style="display: none;"></div>
+                    </div>
+
+                    <div class="api-card">
+                        <h3><span class="method post">POST</span> Services (Custom)</h3>
+                        <div class="endpoint">/api/traefik/services-custom</div>
+                        <div class="description">Get services with custom config</div>
+                        <div class="input-group">
+                            <label>Custom Config (JSON):</label>
+                            <textarea id="services-custom-json" rows="3" placeholder='{"dokployApiKey": "custom-key", "apiDomain": "https://custom.domain.com"}'></textarea>
+                        </div>
+                        <button class="btn" onclick="getCustomServices()">Get Custom Services</button>
+                        <div class="loading" id="loading-services-custom">Loading...</div>
+                        <div class="response" id="response-services-custom" style="display: none;"></div>
+                    </div>
+
+                    <div class="api-card">
+                        <h3><span class="method get">GET</span> CORS Test</h3>
+                        <div class="endpoint">/api/cors-test/simple</div>
+                        <div class="description">Test CORS configuration</div>
+                        <button class="btn" onclick="callAPI('GET', '/api/cors-test/simple')">Test CORS</button>
+                        <div class="loading" id="loading-cors-test">Testing...</div>
+                        <div class="response" id="response-cors-test" style="display: none;"></div>
+                    </div>
+
+                    <div class="api-card">
+                        <h3><span class="method post">POST</span> CORS Preflight</h3>
+                        <div class="endpoint">/api/cors-test/preflight</div>
+                        <div class="description">Test CORS preflight request</div>
+                        <div class="input-group">
+                            <label>Test Data (JSON):</label>
+                            <textarea id="preflight-data" rows="2" placeholder='{"test": "data"}' value='{"test": "preflight"}'></textarea>
+                        </div>
+                        <button class="btn" onclick="testCorsPreflight()">Test Preflight</button>
+                        <div class="loading" id="loading-cors-preflight">Testing...</div>
+                        <div class="response" id="response-cors-preflight" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dangerous Operations Tab -->
+            <div class="tab-pane" id="dangerous">
+                <div class="warning">
+                    <h4>⚠️ WARNING: DANGEROUS OPERATIONS</h4>
+                    <p>These operations can permanently change or reset your configuration. Use with extreme caution!</p>
+                </div>
+                
+                <div class="api-grid">
+                    <div class="api-card danger">
+                        <h3><span class="method put">PUT</span> Update Configuration</h3>
+                        <div class="endpoint">/api/config/update</div>
+                        <div class="description">Update configuration properties - This will overwrite existing settings!</div>
+                        <div class="input-group">
+                            <label>Configuration (JSON):</label>
+                            <textarea id="config-json" rows="3" placeholder='{"dokployApiKey": "key", "apiDomain": "https://dp.imvj.in"}'></textarea>
+                        </div>
+                        <button class="btn danger" onclick="confirmUpdateConfig()">⚠️ Update Config</button>
+                        <div class="loading" id="loading-update-config">Updating...</div>
+                        <div class="response" id="response-update-config" style="display: none;"></div>
+                    </div>
+
+                    <div class="api-card danger">
+                        <h3><span class="method post">POST</span> Reset Configuration</h3>
+                        <div class="endpoint">/api/config/reset</div>
+                        <div class="description">Reset to default values - This will ERASE all custom configuration!</div>
+                        <button class="btn danger" onclick="confirmResetConfig()">⚠️ Reset Config</button>
+                        <div class="loading" id="loading-reset-config">Resetting...</div>
+                        <div class="response" id="response-reset-config" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function showLoading(endpoint) {
+            document.getElementById(`loading-${endpoint}`).style.display = 'block';
+            document.getElementById(`response-${endpoint}`).style.display = 'none';
+        }
+
+        function hideLoading(endpoint) {
+            document.getElementById(`loading-${endpoint}`).style.display = 'none';
+        }
+
+        function showResponse(endpoint, data, isSuccess = true) {
+            const responseDiv = document.getElementById(`response-${endpoint}`);
+            responseDiv.style.display = 'block';
+            responseDiv.className = `response ${isSuccess ? 'success' : 'error'}`;
+            
+            if (typeof data === 'object') {
+                responseDiv.innerHTML = `<div class="status ${isSuccess ? 'success' : 'error'}">${isSuccess ? 'Success' : 'Error'}</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } else {
+                responseDiv.innerHTML = `<div class="status ${isSuccess ? 'success' : 'error'}">${isSuccess ? 'Success' : 'Error'}</div><pre>${data}</pre>`;
+            }
+        }
+
+        async function callAPI(method, endpoint, body = null) {
+            const endpointId = endpoint.split('/').pop().replace(/[^a-zA-Z0-9]/g, '-');
+            showLoading(endpointId);
+
+            try {
+                const options = { method, headers: { 'Content-Type': 'application/json' } };
+                if (body) options.body = JSON.stringify(body);
+
+                const response = await fetch(`${API_BASE}${endpoint}`, options);
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResponse(endpointId, data, true);
+                } else {
+                    showResponse(endpointId, data, false);
+                }
+            } catch (error) {
+                showResponse(endpointId, `Error: ${error.message}`, false);
+            } finally {
+                hideLoading(endpointId);
+            }
+        }
+
+        function addHost() {
+            const hostname = document.getElementById('hostname').value.trim();
+            if (!hostname) { alert('Please enter a hostname'); return; }
+            callAPI('POST', '/api/traefik/add-host', { hostname: hostname });
+        }
+
+        function deleteHost() {
+            const hostname = document.getElementById('delete-hostname').value.trim();
+            if (!hostname) { alert('Please enter a hostname'); return; }
+            callAPI('DELETE', '/api/traefik/delete-host', { hostname: hostname });
+        }
+
+        function confirmUpdateConfig() {
+            const configJson = document.getElementById('config-json').value.trim();
+            if (!configJson) { alert('Please enter configuration JSON'); return; }
+            
+            if (confirm('⚠️ WARNING: This will overwrite your current configuration!\n\nAre you sure you want to continue?')) {
+                try {
+                    const config = JSON.parse(configJson);
+                    callAPI('PUT', '/api/config/update', config);
+                } catch (error) {
+                    alert('Invalid JSON format');
+                }
+            }
+        }
+
+        function confirmResetConfig() {
+            if (confirm('🚨 DANGER: This will RESET your configuration to default values!\n\nAll custom settings will be LOST!\n\nType "RESET" to confirm:')) {
+                const confirmation = prompt('Type "RESET" to confirm this dangerous operation:');
+                if (confirmation === 'RESET') {
+                    callAPI('POST', '/api/config/reset');
+                } else {
+                    alert('Operation cancelled. Configuration was not reset.');
+                }
+            }
+        }
+
+        function addHostCustom() {
+            const hostname = document.getElementById('custom-hostname').value.trim();
+            if (!hostname) { alert('Please enter a hostname'); return; }
+            
+            // Collect all custom configuration fields
+            const customConfig = {
+                hostname: hostname,
+                dokployApiKey: document.getElementById('custom-api-key').value.trim() || null,
+                apiDomain: document.getElementById('custom-api-domain').value.trim() || null,
+                applicationId: document.getElementById('custom-app-id').value.trim() || null,
+                backendService: document.getElementById('custom-backend').value.trim() || null,
+                frontendService: document.getElementById('custom-frontend').value.trim() || null,
+                serviceName: document.getElementById('custom-service-name').value.trim() || null,
+                servicePort: document.getElementById('custom-service-port').value ? parseInt(document.getElementById('custom-service-port').value) : null,
+                skipMiddlewares: document.getElementById('custom-skip-middlewares').value ? (document.getElementById('custom-skip-middlewares').value === 'true') : null
+            };
+            
+            // Remove null values to keep the request clean
+            Object.keys(customConfig).forEach(key => {
+                if (customConfig[key] === null || customConfig[key] === '') {
+                    delete customConfig[key];
+                }
+            });
+            
+            callAPI('POST', '/api/traefik/add-host-custom', customConfig);
+        }
+
+        function deleteHostCustom() {
+            const hostname = document.getElementById('custom-delete-hostname').value.trim();
+            if (!hostname) { alert('Please enter a hostname'); return; }
+            
+            // Collect all custom configuration fields for deletion
+            const customConfig = {
+                hostname: hostname,
+                dokployApiKey: document.getElementById('custom-delete-api-key').value.trim() || null,
+                apiDomain: document.getElementById('custom-delete-api-domain').value.trim() || null,
+                applicationId: document.getElementById('custom-delete-app-id').value.trim() || null,
+                backendService: document.getElementById('custom-delete-backend').value.trim() || null,
+                frontendService: document.getElementById('custom-delete-frontend').value.trim() || null,
+                serviceName: document.getElementById('custom-delete-service-name').value.trim() || null,
+                servicePort: document.getElementById('custom-delete-service-port').value ? parseInt(document.getElementById('custom-delete-service-port').value) : null,
+                skipMiddlewares: document.getElementById('custom-delete-skip-middlewares').value ? (document.getElementById('custom-delete-skip-middlewares').value === 'true') : null
+            };
+            
+            // Remove null values to keep the request clean
+            Object.keys(customConfig).forEach(key => {
+                if (customConfig[key] === null || customConfig[key] === '') {
+                    delete customConfig[key];
+                }
+            });
+            
+            callAPI('DELETE', '/api/traefik/delete-host-custom', customConfig);
+        }
+
+        function getCustomConfig() {
+            const configJson = document.getElementById('custom-config-json').value.trim();
+            if (!configJson) { alert('Please enter custom configuration JSON'); return; }
+            try {
+                const config = JSON.parse(configJson);
+                callAPI('POST', '/api/traefik/config-custom', config);
+            } catch (error) {
+                alert('Invalid JSON format');
+            }
+        }
+
+        function getCustomServices() {
+            const configJson = document.getElementById('services-custom-json').value.trim();
+            if (!configJson) { alert('Please enter custom configuration JSON'); return; }
+            try {
+                const config = JSON.parse(configJson);
+                callAPI('POST', '/api/traefik/services-custom', config);
+            } catch (error) {
+                alert('Invalid JSON format');
+            }
+        }
+
+        function testCorsPreflight() {
+            const data = document.getElementById('preflight-data').value.trim();
+            if (!data) { alert('Please enter test data'); return; }
+            try {
+                const jsonData = JSON.parse(data);
+                callAPI('POST', '/api/cors-test/preflight', jsonData);
+            } catch (error) {
+                alert('Invalid JSON format');
+            }
+        }
+
+        // Auto-populate config JSON
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_BASE}/api/config/current`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.data) {
+                        document.getElementById('config-json').value = JSON.stringify(data.data, null, 2);
+                    }
+                }
+            } catch (error) {
+                console.log('Could not load current config');
+            }
+        });
+    </script>
+</body>
+</html>
