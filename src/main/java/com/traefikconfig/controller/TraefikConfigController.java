@@ -21,6 +21,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/traefik")
 @CrossOrigin(origins = "*", maxAge = 3600)
@@ -215,11 +217,11 @@ public class TraefikConfigController {
             )
         )
     })
-    public ResponseEntity<ApiResponse<java.util.List<com.traefikconfig.dto.ServiceInfo>>> getServiceUrls() {
+    public ResponseEntity<ApiResponse<List<ServiceInfo>>> getServiceUrls() {
         logger.info("🔍 Received request to get service URLs from Traefik configuration");
 
         try {
-            java.util.List<com.traefikconfig.dto.ServiceInfo> services = traefikConfigService.getServiceUrls();
+            List<ServiceInfo> services = traefikConfigService.getServiceUrls();
             logger.info("✅ Successfully extracted {} service URLs", services.size());
 
             return ResponseEntity.ok(ApiResponse.success("Service URLs retrieved successfully", services));
@@ -258,7 +260,7 @@ public class TraefikConfigController {
             )
         )
     })
-    public ResponseEntity<ApiResponse<java.util.List<com.traefikconfig.dto.ServiceInfo>>> getServiceUrlsWithCustomConfig(
+    public ResponseEntity<ApiResponse<List<ServiceInfo>>> getServiceUrlsWithCustomConfig(
         @Parameter(description = "Custom configuration request", required = true)
         @RequestBody CustomConfigRequest request
     ) {
@@ -268,7 +270,7 @@ public class TraefikConfigController {
                     request.getApplicationId() != null ? request.getApplicationId() : "DEFAULT");
 
         try {
-            java.util.List<com.traefikconfig.dto.ServiceInfo> services = traefikConfigService.getServiceUrlsWithCustomConfig(request);
+            List<ServiceInfo> services = traefikConfigService.getServiceUrlsWithCustomConfig(request);
             logger.info("✅ Successfully extracted {} service URLs with custom config", services.size());
 
             return ResponseEntity.ok(ApiResponse.success("Service URLs retrieved successfully with custom config", services));
